@@ -15,7 +15,7 @@ from servicelayer.taskqueue import flush_queues
 from aleph.core import create_app, cache, db, rabbitmq_channel, kv
 from aleph.authz import Authz
 from aleph.model import Collection, Role, EntitySet
-from aleph.migration import upgrade_system, destroy_db, cleanup_deleted
+from aleph.migration import upgrade_system, destroy_db, cleanup_deleted, downgrade_db
 from aleph.worker import get_worker
 from aleph.queues import get_status, cancel_queue
 from aleph.queues import get_active_dataset_status
@@ -502,6 +502,19 @@ def upgrade():
     upgrade_system()
     # update_roles()
     # upgrade_collections()
+
+
+@cli.command()
+@click.option(
+    "--revision",
+    "-r",
+    default="-1",
+    show_default=True,
+    help="target revision number. Can also be 'head' or '-1'",
+)
+def downgrade_database(revision):
+    """Downgrade the database."""
+    downgrade_db(revision)
 
 
 @cli.command()
