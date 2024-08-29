@@ -56,6 +56,10 @@ SHARD_WEIGHTS = {
 }
 
 
+class AlephOpertionalException(Exception):
+    pass
+
+
 def get_shard_weight(schema):
     if SETTINGS.TESTING:
         return 1
@@ -237,8 +241,7 @@ def _check_response(index, res):
     if res.get("status", 0) > 399 and not res.get("acknowledged"):
         error = res.get("error", {}).get("reason")
         log.error("Index [%s] error: %s", index, error)
-        return False
-    return True
+        raise AlephOpertionalException(f"Index {index} error: {error}")
 
 
 def rewrite_mapping_safe(pending, existing):
@@ -288,24 +291,27 @@ def configure_index(index, mapping, settings):
         }
         config = es.indices.get(index=index).get(index, {})
         settings.get("index").pop("number_of_shards")
+        log.info(f"[{index}] Current settings: {config.get("settings")}")
         if check_settings_changed(settings, config.get("settings")):
+            log.info(f"[{index}] Updated settings: {settings}")
             res = es.indices.close(ignore_unavailable=True, **options)
+            _check_response(index, res)
             res = es.indices.put_settings(body=settings, **options)
-            if not _check_response(index, res):
-                return False
+            _check_response(index, res)
+        else:
+            log.info(f"[{index}] No changes detected in settings.")
+        log.info(f"[{index}] Current mappings: {config.get("mappings")}")
+        log.info(f"[{index}] New mappings: {mapping}")
         mapping = rewrite_mapping_safe(mapping, config.get("mappings"))
         res = es.indices.put_mapping(body=mapping, ignore=[400], **options)
-        if not _check_response(index, res):
-            return False
+        _check_response(index, res)
         res = es.indices.open(**options)
-        return True
+        _check_response(index, res)
     else:
         log.info("Creating index: %s...", index)
         body = {"settings": settings, "mappings": mapping}
         res = es.indices.create(index, body=body)
-        if not _check_response(index, res):
-            return False
-        return True
+        _check_response(index, res)
 
 
 def index_settings(shards=5, replicas=SETTINGS.INDEX_REPLICAS):

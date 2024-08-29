@@ -21,6 +21,7 @@ from aleph.queues import get_status, cancel_queue
 from aleph.queues import get_active_dataset_status
 from aleph.index.admin import delete_index
 from aleph.index.entities import iter_proxies
+from aleph.index.util import AlephOpertionalException
 from aleph.logic.collections import create_collection, update_collection
 from aleph.logic.collections import delete_collection, reindex_collection
 from aleph.logic.collections import upgrade_collections, reingest_collection
@@ -499,9 +500,12 @@ def publish(foreign_id):
 @cli.command()
 def upgrade():
     """Create or upgrade the search index and database."""
-    upgrade_system()
-    # update_roles()
-    # upgrade_collections()
+    try:
+        upgrade_system()
+        # update_roles()
+        # upgrade_collections()
+    except AlephOpertionalException as e:
+        log.exception(f"Failed to upgrade.")
 
 
 @cli.command()
